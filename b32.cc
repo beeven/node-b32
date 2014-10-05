@@ -44,11 +44,12 @@ int base32_decode(const char *encoded, char *result, size_t bufSize) {
 	int buffer = 0;
 	int bitsLeft = 0;
 	int count = 0;
-	for(const char *ptr = encoded; count < bufSize && *ptr; ++ptr) {
+	for(const char *ptr = encoded; count < bufSize && *ptr && *ptr!='='; ++ptr) {
 		char ch = *ptr;
 		if(ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n' || ch == '-') {
 			continue;
 		}
+		
 		buffer <<= 5;
 
 		if(ch == '0') {
@@ -101,7 +102,7 @@ public:
 		if(method == 1) { // encode
 			bufSize  = (input_size * 8 - 1)/5+1;
 			result = new char[input_size];
-			if(base32_encode(input,input_size,result,bufSize) == -1) {
+			if((result_size=base32_encode(input,input_size,result,bufSize)) == -1) {
 				SetErrorMessage("encode error");
 			}
 			
@@ -109,11 +110,11 @@ public:
 			size_t size = strlen(input);
 			bufSize = (size * 5 )/8;
 			result = new char[bufSize];
-			if(base32_decode(input,result,bufSize) == -1) {
+			if((result_size = base32_decode(input,result,bufSize)) == -1) {
 				SetErrorMessage("decode error");
 			}
 		}
-		result_size = bufSize;
+		//result_size = bufSize;
 	}
 
 	void HandleOKCallback() {
@@ -143,12 +144,12 @@ NAN_METHOD(encodeSync) {
 
 	size_t bufSize = (size * 8 - 1)/5+1;
 	char *result = new char[bufSize];
-
-	if(base32_encode(buf,size,result,bufSize) < 0) {
+	int result_size = 0;
+	if((result_size = base32_encode(buf,size,result,bufSize))< 0) {
 		NanThrowError("encode error");
 		NanReturnUndefined();
 	} else {
-		NanReturnValue(NanBufferUse(result,bufSize));
+		NanReturnValue(NanBufferUse(result,result_size));
 	}
 
 }
@@ -167,14 +168,15 @@ NAN_METHOD(decodeSync) {
 	
 	size_t size = Buffer::Length(arg->ToObject());
 	char* buf = Buffer::Data(arg->ToObject());
+
 	size_t bufSize = (size * 5 )/8;
 	char *result = new char[bufSize];
-
-	if(base32_decode(buf,result,bufSize) < 0) {
+	int result_size = 0;
+	if((result_size = base32_decode(buf,result,bufSize)) < 0) {
 		NanThrowError("decode error");
 		NanReturnUndefined();
 	} else {
-		NanReturnValue(NanBufferUse(result,bufSize));
+		NanReturnValue(NanBufferUse(result,result_size));
 	}
 
 }
@@ -198,6 +200,7 @@ NAN_METHOD(encode) {
 	NanCallback *callback = new NanCallback(cb);
 	size_t size = Buffer::Length(arg->ToObject());
 	char* buf = Buffer::Data(arg->ToObject());
+
 	B32Async* job = new B32Async(callback,1,buf,size);
 	NanAsyncQueueWorker(job);
 	NanReturnUndefined();
@@ -222,6 +225,7 @@ NAN_METHOD(decode) {
 	NanCallback *callback = new NanCallback(cb);
 	size_t size = Buffer::Length(arg->ToObject());
 	char* buf = Buffer::Data(arg->ToObject());
+
 	B32Async* job = new B32Async(callback,2,buf,size);
 	NanAsyncQueueWorker(job);
 	NanReturnUndefined();

@@ -112,6 +112,15 @@ describe("b32",function(){
 				done();
 			})
 		});
+		it("should support the '=' padding",function(done){
+			b32.decode('MZXW6===').then(function(result){
+				result.toString().should.be.exactly("foo");
+				done();
+			},function(err){
+				console.error(err);
+				done(err);
+			})
+		})
 	});
 
 	describe("#encodeSync",function(){
@@ -133,6 +142,10 @@ describe("b32",function(){
 				var result = b32.decodeSync(new Buffer(testcases[i])).toString('utf8');
 				result.should.be.exactly(expected[i]);
 			}
+		});
+		it("should support the '=' padding",function(){
+			var result = b32.decodeSync('MZXW6===');
+			result.toString().should.be.exactly('foo');
 		})
 	});
 });

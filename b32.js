@@ -30,6 +30,9 @@ function async_call(method, input, options, callback) {
 			});
 		}
 	} else if (method == 'decode') {
+		var index = input.toString().indexOf('=');
+		if(index == -1) index = input.length;
+		input = input.slice(0,index);
 		promise = Q.nfcall(addon.decode,input);
 	}
 
@@ -59,7 +62,9 @@ function sync_call(method, input, options) {
 		}
 		return result;
 	} else if (method == 'decode') {
-		return addon.decodeSync(input);
+		var index = input.toString().indexOf('=')
+		if(index == -1) index = input.length;
+		return addon.decodeSync(input.slice(0,index));
 	}
 }
 
