@@ -1,9 +1,13 @@
 {
-	"name":"b32",
-	"version":"0.1.0",
+	"name":"node-b32",
+	"version":"0.1.1",
 	"description": "base32 encoder & decoder",
+	"email": "beeven@hotmail.com",
+	"keywords": ["base32", "b32"],
+	"homepage": "https://github.com/beeven/node-b32/",
+	"license":"MIT",
+	"repository": "git://github.com/beeven/node-b32.git",
 	"main" : "b32.js",
-	"private" : true,
 	"scripts" : {
 		"test": "mocha test.js"
 	},
