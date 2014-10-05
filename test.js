@@ -80,16 +80,17 @@ describe("b32",function(){
 				done();
 			})
 		});
-		it("should return 'MZXW6===' if input is 'foo' and options contain 'padding'", function(done){
+		it("should return 'MZXW6===' options has 'padding'", function(done){
 			b32.encode('foo',{padding:1}).then(function(result){
 				result.toString().should.be.exactly('MZXW6===');
 				done();
 			})
 			.fail(function(err){
+				console.error(err);
 				done(err);
 			})
 		});
-		it("should return 'MYAA' if input is 'f\x00'",function(done){
+		it("should return 'MYAA' if input is 'f\\x00'",function(done){
 			b32.encode('f\x00',function(err,result){
 				if(err) {
 					done(err);
@@ -97,11 +98,22 @@ describe("b32",function(){
 				}
 				result.toString().should.be.exactly("MYAA");
 				done();
-			})
-		}) 
+			});
+		});
+
+		//it("should support chaining",function(){
+			// b32.encode("foo").then(function(encoded){
+			// 	encoded.toString().should.be.exactly('MZXW6');
+			// 	return b32.decode(encoded);
+			// })
+			// .then(function(decoded){
+			// 	decoded.toString().should.be.exactly('foo');
+			// 	done();
+			// });
+		//});
 	});
 
-	describe("#decode",function(done){
+	describe("#decode",function(){
 		it("should pass the testcases: 'foo' ", function(done){
 			b32.decode(new Buffer('MZXW6'),function(err,result){
 				if(err) {
@@ -119,8 +131,8 @@ describe("b32",function(){
 			},function(err){
 				console.error(err);
 				done(err);
-			})
-		})
+			});
+		});
 	});
 
 	describe("#encodeSync",function(){
