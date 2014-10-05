@@ -3,28 +3,24 @@ node-b32
 
 Implementation of RFC-3548 Base32 encoding/decoding for node using C (suppose to be faster than pure javascript).
 
-Features
-=========
-. Implemented in C
-. Sync & Async methods support
-. Options to add '=' paddings
-. Promises chaining support (Thanks to q)
+##Features
+- Implemented in C
+- Sync & Async methods support
+- Options to add '=' paddings
+- Promises chaining support (Thanks to q)
 
-Installation
-=========
-```
+##Installation
+```bash
 npm install node-b32
 ```
 
-Test
-=========
-```
+##Test
+```bash
 npm test
 ```
 
-Usage
-=========
-```
+##Usage
+```javascript
 var b32 = require("node-b32");
 // Encode a string and use callback to pick up the result 
 b32.encode('foo',function(err,result){
@@ -53,26 +49,27 @@ b32.decode(new Buffer('MZXW6')).
 ```
 
 
-Functions
-=========
-# encodeSync(Buffer[,options])
+
+
+##Functions
+### encodeSync(Buffer[,options])
 options:
  - padding: Boolean (default: false) add '=' padding to the end
 Returns:
  Encoded base32 string in buffer
 
-# decodeSync(Buffer)
+### decodeSync(Buffer)
 Returns:
  Decoded binary buffer
 
-# encode(Buffer,[options],[callback])
+### encode(Buffer,[options],[callback])
 options:
   - same as sync function
 callback: a function with signature function(err,result)
 Returns:
     A promise which will resolve with the result
 
-# decode(Buffer,[callback])
+### decode(Buffer,[callback])
 callback: a function with signature function(err,result)
 Returns:
     A promise which will resolve with the result
