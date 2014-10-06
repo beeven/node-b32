@@ -1,5 +1,5 @@
 {
-	"name":"node-b32",
+	"name":"b32",
 	"version":"0.1.1",
 	"description": "base32 encoder & decoder",
 	"email": "beeven@hotmail.com",

@@ -1,4 +1,4 @@
-node-b32
+b32
 ========
 
 Implementation of RFC-3548 Base32 encoding/decoding for node using C (suppose to be faster than pure javascript).
@@ -11,7 +11,7 @@ Implementation of RFC-3548 Base32 encoding/decoding for node using C (suppose to
 
 ##Installation
 ```bash
-npm install node-b32
+npm install b32
 ```
 
 ##Test
@@ -21,7 +21,7 @@ npm test
 
 ##Usage
 ```javascript
-var b32 = require("node-b32");
+var b32 = require("b32");
 // Encode a string and use callback to pick up the result 
 b32.encode('foo',function(err,result){
     console.log(result.toString());
