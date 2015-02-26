@@ -1,24 +1,27 @@
 {
-	"name":"b32",
-	"version":"0.1.3",
-	"description": "base32 encoder & decoder",
-	"email": "beeven@hotmail.com",
-	"keywords": ["base32", "b32"],
-	"homepage": "https://github.com/beeven/node-b32/",
-	"license":"MIT",
-	"repository": "git://github.com/beeven/node-b32.git",
-	"main" : "b32.js",
-	"scripts" : {
-		"test": "mocha test.js"
-	},
-	"gypfile": true,
-	"dependencies": {
-		"bindings":"~1.2.1",
-		"nan":"~1.3.0",
-		"q":"~1.1.2"
-	},
-	"devDependencies": {
-		"mocha": "~1.21.4",
-		"should":"~4.0.4"
-	}
+  "name": "b32",
+  "version": "0.1.4",
+  "description": "base32 encoder & decoder",
+  "email": "beeven@hotmail.com",
+  "keywords": [
+    "base32",
+    "b32"
+  ],
+  "homepage": "https://github.com/beeven/node-b32/",
+  "license": "MIT",
+  "repository": "git://github.com/beeven/node-b32.git",
+  "main": "b32.js",
+  "scripts": {
+    "test": "mocha test.js"
+  },
+  "gypfile": true,
+  "dependencies": {
+    "bindings": "~1.2.1",
+    "nan": "^1.6.2",
+    "q": "^1.2.0",
+    "should": "^5.0.1"
+  },
+  "devDependencies": {
+    "should": "~4.0.4"
+  }
 }

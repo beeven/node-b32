@@ -3,23 +3,27 @@ b32
 
 Implementation of RFC-3548 Base32 encoding/decoding for node using C (suppose to be faster than pure javascript).
 
-##Features
+Features
+----------
 - Implemented in C
 - Sync & Async methods support
 - Options to add '=' paddings
 - Promises chaining support (Thanks to q)
 
-##Installation
+Installation
+-------------
 ```bash
 npm install b32
 ```
 
-##Test
+Test
+-----------------
 ```bash
 npm test
 ```
 
-##Usage
+Usage
+-----------------
 ```javascript
 var b32 = require("b32");
 // Encode a string and use callback to pick up the result 
@@ -51,7 +55,8 @@ b32.decode(new Buffer('MZXW6')).
 
 
 
-##Functions
+Functions
+-------------
 ### encodeSync(Buffer[,options])
 options:
  - padding: Boolean (default: false) add '=' padding to the end
