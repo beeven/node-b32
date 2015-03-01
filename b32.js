@@ -1,7 +1,5 @@
 var addon = require("bindings")("b32");
 
-var Q = require("q");
-
 
 function async_call(method, input, options, callback) {
 	if(typeof(options) === 'function') {
@@ -17,13 +15,16 @@ function async_call(method, input, options, callback) {
 
 	var promise;
 	if(method == 'encode') {
-		promise = Q.nfcall(addon.encode,input)
-						.then(function(result){
-							return result.toString();
-						});
+		promise = new Promise(function(resolve, reject){
+			addon.encode(input,function(err,data){
+				if(err) {
+					reject(err);
+				}
+				resolve(data.toString());
+			});
+		});
 		if(!!options && !!options.padding) {
 			promise = promise.then(function(result){
-		
 				var length = result.length;
 				var padding_count = (length % 8) ? 8 - (length % 8) : 0;
 				return result + Array(padding_count+1).join('=');
@@ -33,7 +34,14 @@ function async_call(method, input, options, callback) {
 		var index = input.toString().indexOf('=');
 		if(index == -1) index = input.length;
 		input = input.slice(0,index);
-		promise = Q.nfcall(addon.decode,input);
+		promise = new Promise(function(resolve,reject){
+			addon.decode(input,function(err,data){
+				if(err) {
+					reject(err);
+				}
+				resolve(data);
+			});
+		});
 	}
 
 	if(typeof(callback) === 'function') {

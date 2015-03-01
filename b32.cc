@@ -9,13 +9,13 @@ using namespace node;
 const char* b32table = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
 int base32_encode(const char* data, size_t length, char *buf, size_t bufSize) {
-	if(length < 0 || length > (1 << 28)) {
+	if(length > (1 << 28)) {
 		return -1;
 	}
-	int count = 0;
+	unsigned int count = 0;
 	if(length > 0) {
 		int buffer = data[0];
-		int next = 1;
+		unsigned int next = 1;
 		int bitsLeft = 8;
 		while(count < bufSize && (bitsLeft > 0 || next < length)) {
 			if(bitsLeft < 5) {
@@ -43,7 +43,7 @@ int base32_encode(const char* data, size_t length, char *buf, size_t bufSize) {
 int base32_decode(const char* encoded, char *buf, size_t bufSize) {
 	int buffer = 0;
 	int bitsLeft = 0;
-	int count = 0;
+	unsigned int count = 0;
 	for(const char *ptr = encoded; count < bufSize && *ptr && *ptr!='='; ++ptr) {
 		char ch = *ptr;
 		if(ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n' || ch == '-') {
@@ -81,52 +81,6 @@ int base32_decode(const char* encoded, char *buf, size_t bufSize) {
 	return count;
 }
 
-class B32Async: public NanAsyncWorker {
-public:
-	int method;
-	const char* input;
-	const size_t input_size;
-	char* result;
-	size_t result_size;
-
-	B32Async(NanCallback *callback, int method,const char* input, const size_t input_size):NanAsyncWorker(callback),
-		method(method),input(input), input_size(input_size) {
-	}
-
-	~B32Async() {
-		delete result;
-	}
-
-	void Execute() {
-		size_t bufSize;
-		if(method == 1) { // encode
-			bufSize  = (input_size * 8 - 1)/5+1;
-			result = new char[input_size];
-			if((result_size=base32_encode(input,input_size,result,bufSize)) == -1) {
-				SetErrorMessage("encode error");
-			}
-			
-		} else { // decode
-			size_t size = strlen(input);
-			bufSize = (size * 5 )/8;
-			result = new char[bufSize];
-			if((result_size = base32_decode(input,result,bufSize)) == -1) {
-				SetErrorMessage("decode error");
-			}
-		}
-		//result_size = bufSize;
-	}
-
-	void HandleOKCallback() {
-		NanScope();
-		Handle<Value> argv[] = {
-				NanNull(),
-				NanBufferUse(result,result_size)
-			};
-		callback->Call(2,argv);
-	}
-};
-
 void encodeSync(const FunctionCallbackInfo<Value>& args) {
 	Isolate* isolate = Isolate::GetCurrent();
 	HandleScope scope(isolate);
@@ -154,7 +108,7 @@ void encodeSync(const FunctionCallbackInfo<Value>& args) {
 			String::NewFromUtf8(isolate,"Encode error")));
 		return;
 	} else {
-		args.GetRetrunValue().Set(Buffer::Use(isolate,result,result_size));
+		args.GetReturnValue().Set(Buffer::Use(isolate,result,result_size));
 	}
 
 }
@@ -187,38 +141,65 @@ void decodeSync(const FunctionCallbackInfo<Value>& args) {
 			String::NewFromUtf8(isolate,"Decode error")));
 		return;
 	} else {
-		args.GetRetrunValue().Set(Buffer::Use(isolate,result,result_size));
+		args.GetReturnValue().Set(Buffer::Use(isolate,result,result_size));
 	}
 
 }
 
 typedef struct {
-	Local<Function>& callback,
-	const char* data,
-	size_t length,
-	char* buf,
-	size_t buf_size,
-	bool decoding
+	Local<Function> *callback;
+	char *data;
+	size_t length;
+	bool decoding;
 } b32_context_t;
 
 
 void do_encode_decode(uv_work_t *req) {
+	fprintf(stderr,"Working...\n");
+
+	Isolate* isolate = Isolate::GetCurrent();
+	HandleScope scope(isolate);
+
 	b32_context_t* context = (b32_context_t*)req->data;
+
+	fprintf(stderr, "Working with: %s",context->data);
+	size_t buf_size;
+	char *buf;
+	int ret;
 	if(context->decoding) {
-		base32_decode(context->data,context->buf,context->buf_size);
+		buf_size = (context->length * 5 )/8;
+		buf = new char[buf_size];
+		ret = base32_decode(context->data, buf, buf_size);
 	}
 	else {
-		base32_encode(context->data, context->length,context->buf, context->buf_size);
+		buf_size = (context->length * 8 - 1)/5+1;
+		buf = new char[buf_size];
+		ret = base32_encode(context->data, context->length, buf, buf_size);
 	}
+
+	fprintf(stderr,"Done calculating...\n");
+
+	const unsigned argc = 2;
+	Local<Value> argv[argc];
+
+	if(ret >= 0) {
+		argv[0] = Null(isolate);
+		argv[1] = Buffer::Use(buf,buf_size);
+	}
+	else {
+		argv[0] = String::NewFromUtf8(isolate,"Encode error");
+		argv[1] = Null(isolate);
+	}
+	(* context->callback)->Call(isolate->GetCurrentContext()->Global(),argc,argv);
+
 }
 
-void after_encode_decode(uv_work_t *req) {
-	b32_context_t* context = (b32_context_t*)req->data;
-
+void after_encode_decode(uv_work_t *req, int status) {
+	fprintf(stderr,"Finish working...\n");
 }
 
-void encode(const FunctionCallbackInfo<Value>& args) {
-	Isolate isolate = Isolate::GetCurrent();
+void encode_decode(const FunctionCallbackInfo<Value>& args, bool decoding = false) {
+	Isolate* isolate = Isolate::GetCurrent();
 	HandleScope scope(isolate);
 
 	if(args.Length() < 2) {
@@ -237,65 +218,35 @@ void encode(const FunctionCallbackInfo<Value>& args) {
 			String::NewFromUtf8(isolate,"Argument 2 must be a function")));
 		return;
 	}
-	Local<Function> cb = args[1].As<Function>();
+	Local<Function> cb = Local<Function>::Cast(args[1]);
 
 	uv_work_t work_req;
 	b32_context_t context;
-	context.callback = cb;
+	context.callback = &cb;
 	context.data = Buffer::Data(arg->ToObject());
 	context.length = Buffer::Length(arg->ToObject());
-	context.buf_size  = (context.length * 8 - 1)/5+1;
-	context.buf = new char[context.buf_size];
-	context.decoding = false;
+	context.decoding = decoding;
 	work_req.data = (void *) &context;
 
-	uv_queue_work(uv_default_loop(),&work_req,do_encode_decode,after_encode_decode);
+	uv_queue_work(uv_default_loop(),&work_req, do_encode_decode, after_encode_decode);
 
 	return;
-
-	/*
-	NanCallback *callback = new NanCallback(cb);
-	size_t size = Buffer::Length(arg->ToObject());
-	char* buf = Buffer::Data(arg->ToObject());
-	
-
-	B32Async* job = new B32Async(callback,1,buf,size);
-	NanAsyncQueueWorker(job);
-	NanReturnUndefined();
-	*/
 }
 
-NAN_METHOD(decode) {
-	NanScope();
-	if(args.Length() < 1) {
-		NanThrowTypeError("Wrong number of arguments");
-		NanReturnUndefined();
-	}
-	Local<Value> arg = args[0];
-	if(!Buffer::HasInstance(arg)) {
-		NanThrowTypeError("argument 1 must be a buffer");
-		NanReturnUndefined();
-	}
-	if(!args[1]->IsFunction()){
-		NanThrowTypeError("argument 2 must be a function");
-		NanReturnUndefined();
-	}
-	Local<Function> cb = args[1].As<Function>();
-	NanCallback *callback = new NanCallback(cb);
-	size_t size = Buffer::Length(arg->ToObject());
-	char* buf = Buffer::Data(arg->ToObject());
+void encode(const FunctionCallbackInfo<Value>& args) {
+	encode_decode(args, false);
+}
 
-	B32Async* job = new B32Async(callback,2,buf,size);
-	NanAsyncQueueWorker(job);
-	NanReturnUndefined();
+void decode(const FunctionCallbackInfo<Value>& args){
+	encode_decode(args, true);
 }
 
 
 void init(Handle<Object> exports, Handle<Object> module) {
-	exports->Set(NanNew("encodeSync"), NanNew<FunctionTemplate>(encodeSync)->GetFunction());
-	exports->Set(NanNew("decodeSync"),NanNew<FunctionTemplate>(decodeSync)->GetFunction());
-	exports->Set(NanNew("encode"),NanNew<FunctionTemplate>(encode)->GetFunction());
-	exports->Set(NanNew("decode"),NanNew<FunctionTemplate>(decode)->GetFunction());
+	NODE_SET_METHOD(exports, "encodeSync", encodeSync);
+	NODE_SET_METHOD(exports, "decodeSync", decodeSync);
+	NODE_SET_METHOD(exports, "encode", encode);
+	NODE_SET_METHOD(exports, "decode", decode);
 }
 
 NODE_MODULE(b32, init);
