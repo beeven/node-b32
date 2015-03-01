@@ -195,41 +195,74 @@ void decodeSync(const FunctionCallbackInfo<Value>& args) {
 typedef struct {
 	Local<Function>& callback,
 	const char* data,
-	size_t length
-} b32_req_t;
+	size_t length,
+	char* buf,
+	size_t buf_size,
+	bool decoding
+} b32_context_t;
 
 
-void do_encode(uv_work_t *req) {
-	
+void do_encode_decode(uv_work_t *req) {
+	b32_context_t* context = (b32_context_t*)req->data;
+	if(context->decoding) {
+		base32_decode(context->data,context->buf,context->buf_size);
+	}
+	else {
+		base32_encode(context->data, context->length,context->buf, context->buf_size);
+	}
 }
 
-void after_encode_cb(uv_work_t *work_req) {
-	Local<Function> cb = work_req->data;
+void after_encode_decode(uv_work_t *req) {
+	b32_context_t* context = (b32_context_t*)req->data;
+
 }
 
-NAN_METHOD(encode) {
-	NanScope();
-	if(args.Length() < 1) {
-		NanThrowTypeError("Wrong number of arguments");
-		NanReturnUndefined();
+void encode(const FunctionCallbackInfo<Value>& args) {
+	Isolate isolate = Isolate::GetCurrent();
+	HandleScope scope(isolate);
+
+	if(args.Length() < 2) {
+		isolate->ThrowException(Exception::TypeError(
+			String::NewFromUtf8(isolate,"Wrong number of arguments")));
+		return;
 	}
 	Local<Value> arg = args[0];
 	if(!Buffer::HasInstance(arg)) {
-		NanThrowTypeError("argument 1 must be a buffer");
-		NanReturnUndefined();
+		isolate->ThrowException(Exception::TypeError(
+			String::NewFromUtf8(isolate,"Argument 1 must be a buffer")));
+		return;
 	}
 	if(!args[1]->IsFunction()){
-		NanThrowTypeError("argument 2 must be a function");
-		NanReturnUndefined();
+		isolate->ThrowException(Exception::TypeError(
+			String::NewFromUtf8(isolate,"Argument 2 must be a function")));
+		return;
 	}
 	Local<Function> cb = args[1].As<Function>();
+
+	uv_work_t work_req;
+	b32_context_t context;
+	context.callback = cb;
+	context.data = Buffer::Data(arg->ToObject());
+	context.length = Buffer::Length(arg->ToObject());
+	context.buf_size  = (context.length * 8 - 1)/5+1;
+	context.buf = new char[context.buf_size];
+	context.decoding = false;
+	work_req.data = (void *) &context;
+
+	uv_queue_work(uv_default_loop(),&work_req,do_encode_decode,after_encode_decode);
+
+	return;
+
+	/*
 	NanCallback *callback = new NanCallback(cb);
 	size_t size = Buffer::Length(arg->ToObject());
 	char* buf = Buffer::Data(arg->ToObject());
+	
 
 	B32Async* job = new B32Async(callback,1,buf,size);
 	NanAsyncQueueWorker(job);
 	NanReturnUndefined();
+	*/
 }
 
 NAN_METHOD(decode) {
