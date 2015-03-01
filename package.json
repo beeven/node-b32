@@ -16,12 +16,9 @@
   },
   "gypfile": true,
   "dependencies": {
-    "bindings": "~1.2.1",
-    "nan": "^1.6.2",
-    "q": "^1.2.0",
-    "should": "^5.0.1"
+    "bindings": "~1.2.1"
   },
   "devDependencies": {
-    "should": "~4.0.4"
+    "should": "^5.0.1"
   }
 }

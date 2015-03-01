@@ -1,14 +1,14 @@
-#include <nan.h>
 #include <node.h>
 #include <node_buffer.h>
 #include <stdio.h>
+#include <uv.h>
 
 using namespace v8;
 using namespace node;
 
-const char *b32table = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+const char* b32table = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
-int base32_encode(const char *data, size_t length, char *result, size_t bufSize) {
+int base32_encode(const char* data, size_t length, char *buf, size_t bufSize) {
 	if(length < 0 || length > (1 << 28)) {
 		return -1;
 	}
@@ -31,16 +31,16 @@ int base32_encode(const char *data, size_t length, char *result, size_t bufSize)
 			}
 			int index = 0x1f & (buffer >> (bitsLeft - 5));
 			bitsLeft -= 5;
-			result[count++] = b32table[index];
+			buf[count++] = b32table[index];
 		}
 	}
 	if(count < bufSize) {
-		result[count] = '\000';
+		buf[count] = '\000';
 	}
 	return count;
 }
 
-int base32_decode(const char *encoded, char *result, size_t bufSize) {
+int base32_decode(const char* encoded, char *buf, size_t bufSize) {
 	int buffer = 0;
 	int bitsLeft = 0;
 	int count = 0;
@@ -71,12 +71,12 @@ int base32_decode(const char *encoded, char *result, size_t bufSize) {
 		buffer |= ch;
 		bitsLeft += 5;
 		if(bitsLeft >= 8) {
-			result[count++] = buffer >> (bitsLeft - 8);
+			buf[count++] = buffer >> (bitsLeft - 8);
 			bitsLeft -= 8;
 		}
 	}
 	if(count < bufSize) {
-		result[count] = '\000';
+		buf[count] = '\000';
 	}
 	return count;
 }
@@ -127,17 +127,21 @@ public:
 	}
 };
 
-NAN_METHOD(encodeSync) {
-	NanScope();
+void encodeSync(const FunctionCallbackInfo<Value>& args) {
+	Isolate* isolate = Isolate::GetCurrent();
+	HandleScope scope(isolate);
+
 	if(args.Length() < 1) {
-		NanThrowTypeError("Wrong number of arguments");
-		NanReturnUndefined();
+		isolate->ThrowException(Exception::TypeError(
+			String::NewFromUtf8(isolate,"Wrong number of arguments")));
+		return;
 	}
 
 	Local<Value> arg = args[0];
 	if(!Buffer::HasInstance(arg)) {
-		NanThrowTypeError("argument 1 must be a buffer");
-		NanReturnUndefined();
+		isolate->ThrowException(Exception::TypeError(
+			String::NewFromUtf8(isolate,"Argument 1 must be a buffer")));
+		return;
 	}
 	size_t size = Buffer::Length(arg->ToObject());
 	char* buf = Buffer::Data(arg->ToObject());
@@ -146,24 +150,30 @@ NAN_METHOD(encodeSync) {
 	char *result = new char[bufSize];
 	int result_size = 0;
 	if((result_size = base32_encode(buf,size,result,bufSize))< 0) {
-		NanThrowError("encode error");
-		NanReturnUndefined();
+		isolate->ThrowException(Exception::TypeError(
+			String::NewFromUtf8(isolate,"Encode error")));
+		return;
 	} else {
-		NanReturnValue(NanBufferUse(result,result_size));
+		args.GetRetrunValue().Set(Buffer::Use(isolate,result,result_size));
 	}
 
 }
 
-NAN_METHOD(decodeSync) {
-	NanScope();
+void decodeSync(const FunctionCallbackInfo<Value>& args) {
+	Isolate* isolate = Isolate::GetCurrent();
+	HandleScope scope(isolate);
+
 	if(args.Length() < 1) {
-		NanThrowTypeError("Wrong number of arguments");
-		NanReturnUndefined();
+		isolate->ThrowException(Exception::TypeError(
+			String::NewFromUtf8(isolate,"Wrong number of arguments")));
+		return;
 	}
+
 	Local<Value> arg = args[0];
 	if(!Buffer::HasInstance(arg)) {
-		NanThrowTypeError("argument 1 must be a buffer");
-		NanReturnUndefined();
+		isolate->ThrowException(Exception::TypeError(
+			String::NewFromUtf8(isolate,"Argument 1 must be a buffer")));
+		return;
 	}
 	
 	size_t size = Buffer::Length(arg->ToObject());
@@ -173,12 +183,28 @@ NAN_METHOD(decodeSync) {
 	char *result = new char[bufSize];
 	int result_size = 0;
 	if((result_size = base32_decode(buf,result,bufSize)) < 0) {
-		NanThrowError("decode error");
-		NanReturnUndefined();
+		isolate->ThrowException(Exception::TypeError(
+			String::NewFromUtf8(isolate,"Decode error")));
+		return;
 	} else {
-		NanReturnValue(NanBufferUse(result,result_size));
+		args.GetRetrunValue().Set(Buffer::Use(isolate,result,result_size));
 	}
 
+}
+
+typedef struct {
+	Local<Function>& callback,
+	const char* data,
+	size_t length
+} b32_req_t;
+
+
+void do_encode(uv_work_t *req) {
+	
+}
+
+void after_encode_cb(uv_work_t *work_req) {
+	Local<Function> cb = work_req->data;
 }
 
 NAN_METHOD(encode) {
