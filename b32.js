@@ -33,7 +33,6 @@ function async_call(method, input, options, callback) {
 				console.log(result);
 			});
 		});
-		
 	} else if (method == 'decode') {
 		var index = input.toString().indexOf('=');
 		if(index == -1) index = input.length;
@@ -42,6 +41,8 @@ function async_call(method, input, options, callback) {
 			addon.decode(input,function(err,data){
 				if(err) {
 					reject(err);
+					console.error(err);
+					return;
 				}
 				resolve(data);
 			});

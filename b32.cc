@@ -8,7 +8,7 @@ using namespace node;
 
 const char* b32table = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
-int base32_encode(const char* data, size_t length, char *buf, size_t bufSize) {
+int base32_encode(const char* data, size_t length, char *buf, size_t bif_size) {
 	if(length > (1 << 28)) {
 		return -1;
 	}
@@ -16,35 +16,35 @@ int base32_encode(const char* data, size_t length, char *buf, size_t bufSize) {
 	if(length > 0) {
 		int buffer = data[0];
 		unsigned int next = 1;
-		int bitsLeft = 8;
-		while(count < bufSize && (bitsLeft > 0 || next < length)) {
-			if(bitsLeft < 5) {
+		int bits_left = 8;
+		while(count < bif_size && (bits_left > 0 || next < length)) {
+			if(bits_left < 5) {
 				if(next < length) {
 					buffer <<= 8;
 					buffer |= data[next++] & 0xff;
-					bitsLeft += 8;
+					bits_left += 8;
 				} else {
-					int pad = 5 - bitsLeft;
+					int pad = 5 - bits_left;
 					buffer <<= pad;
-					bitsLeft += pad;
+					bits_left += pad;
 				}
 			}
-			int index = 0x1f & (buffer >> (bitsLeft - 5));
-			bitsLeft -= 5;
+			int index = 0x1f & (buffer >> (bits_left - 5));
+			bits_left -= 5;
 			buf[count++] = b32table[index];
 		}
 	}
-	if(count < bufSize) {
+	if(count < bif_size) {
 		buf[count] = '\000';
 	}
 	return count;
 }
 
-int base32_decode(const char* encoded, char *buf, size_t bufSize) {
+int base32_decode(const char* encoded, char *buf, size_t bif_size) {
 	int buffer = 0;
-	int bitsLeft = 0;
+	int bits_left = 0;
 	unsigned int count = 0;
-	for(const char *ptr = encoded; count < bufSize && *ptr && *ptr!='='; ++ptr) {
+	for(const char *ptr = encoded; count < bif_size && *ptr && *ptr!='='; ++ptr) {
 		char ch = *ptr;
 		if(ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n' || ch == '-') {
 			continue;
@@ -69,13 +69,13 @@ int base32_decode(const char* encoded, char *buf, size_t bufSize) {
 		}
 
 		buffer |= ch;
-		bitsLeft += 5;
-		if(bitsLeft >= 8) {
-			buf[count++] = buffer >> (bitsLeft - 8);
-			bitsLeft -= 8;
+		bits_left += 5;
+		if(bits_left >= 8) {
+			buf[count++] = buffer >> (bits_left - 8);
+			bits_left -= 8;
 		}
 	}
-	if(count < bufSize) {
+	if(count < bif_size) {
 		buf[count] = '\000';
 	}
 	return count;
@@ -100,10 +100,10 @@ void encodeSync(const FunctionCallbackInfo<Value>& args) {
 	size_t size = Buffer::Length(arg->ToObject());
 	char* buf = Buffer::Data(arg->ToObject());
 
-	size_t bufSize = (size * 8 - 1)/5+1;
-	char *result = new char[bufSize];
+	size_t bif_size = (size * 8 - 1)/5+1;
+	char *result = new char[bif_size];
 	int result_size = 0;
-	if((result_size = base32_encode(buf,size,result,bufSize))< 0) {
+	if((result_size = base32_encode(buf,size,result,bif_size))< 0) {
 		isolate->ThrowException(Exception::TypeError(
 			String::NewFromUtf8(isolate,"Encode error")));
 		return;
@@ -133,10 +133,10 @@ void decodeSync(const FunctionCallbackInfo<Value>& args) {
 	size_t size = Buffer::Length(arg->ToObject());
 	char* buf = Buffer::Data(arg->ToObject());
 
-	size_t bufSize = (size * 5 )/8;
-	char *result = new char[bufSize];
+	size_t bif_size = (size * 5 )/8;
+	char *result = new char[bif_size];
 	int result_size = 0;
-	if((result_size = base32_decode(buf,result,bufSize)) < 0) {
+	if((result_size = base32_decode(buf,result,bif_size)) < 0) {
 		isolate->ThrowException(Exception::TypeError(
 			String::NewFromUtf8(isolate,"Decode error")));
 		return;

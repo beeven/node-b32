@@ -71,34 +71,36 @@ describe("b32",function(){
 	var b32 = require("./b32");
 	describe("#encode",function(){
 		it("should return 'MZXW6' if input is 'foo' ", function(done){
-			b32.encode(new Buffer('foo'),function(err,result){
-				if(err) {
+			b32.encode(new Buffer('foo'))
+				.then(function(result){
+					result.toString().should.be.exactly("MZXW6");
+					done();
+				},function(err){
 					done(err);
 					throw err;
-				}
-				result.toString().should.be.exactly("MZXW6");
-				done();
-			})
+				});
 		});
 		it("should return 'MZXW6===' options has 'padding'", function(done){
-			b32.encode('foo',{padding:1}).then(function(result){
-				result.toString().should.be.exactly('MZXW6===');
-				done();
-			})
-			.catch(function(err){
-				console.error(err);
-				done(err);
-			})
+			b32.encode('foo',{padding:1})
+				.then(function(result){
+					result.toString().should.be.exactly('MZXW6===');
+					done();
+				})
+				.catch(function(err){
+					console.error(err);
+					done(err);
+				});
 		});
 		it("should return 'MYAA' if input is 'f\\x00'",function(done){
-			b32.encode('f\x00',function(err,result){
-				if(err) {
+			b32.encode('f\x00')
+				.then(function(result){
+					result.toString().should.be.exactly("MYAA");
+					done();
+				})
+				.catch(function(err){
+					console.error(err);
 					done(err);
-					throw err;
-				}
-				result.toString().should.be.exactly("MYAA");
-				done();
-			});
+				});
 		});
 
 		//it("should support chaining",function(){
@@ -115,14 +117,15 @@ describe("b32",function(){
 
 	describe("#decode",function(){
 		it("should pass the testcases: 'foo' ", function(done){
-			b32.decode(new Buffer('MZXW6'),function(err,result){
-				if(err) {
+			b32.decode(new Buffer('MZXW6'))
+				.then(function(result){
+					result.toString().should.be.exactly("foo");
+					done();
+				})
+				.catch(function(err){
+					console.error(err);
 					done(err);
-					throw err;
-				}
-				result.toString().should.be.exactly("foo");
-				done();
-			})
+				})
 		});
 		it("should support the '=' padding",function(done){
 			b32.decode('MZXW6===').then(function(result){
