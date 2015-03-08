@@ -85,7 +85,7 @@ describe("b32",function(){
 				result.toString().should.be.exactly('MZXW6===');
 				done();
 			})
-			.fail(function(err){
+			.catch(function(err){
 				console.error(err);
 				done(err);
 			})
