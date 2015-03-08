@@ -1,6 +1,6 @@
 {
   "name": "b32",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "base32 encoder & decoder",
   "email": "beeven@hotmail.com",
   "keywords": [
