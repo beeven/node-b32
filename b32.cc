@@ -147,55 +147,63 @@ void decodeSync(const FunctionCallbackInfo<Value>& args) {
 }
 
 typedef struct {
-	Local<Function> *callback;
+	Persistent<Function> callback;
 	char *data;
 	size_t length;
+	char *buf;
+	size_t buf_size;
 	bool decoding;
+	int ret;
 } b32_context_t;
 
 
 void do_encode_decode(uv_work_t *req) {
-	fprintf(stderr,"Working...\n");
 
+	b32_context_t* context = (b32_context_t*)req->data;
+	int ret = 0;
+	if(context->decoding) {
+		context->buf_size = (context->length * 5 )/8;
+		context->buf = new char[context->buf_size];
+		ret = base32_decode(context->data, context->buf, context->buf_size);
+	}
+	else {
+		context->buf_size = (context->length * 8 - 1)/5+1;
+		context->buf = new char[context->buf_size];
+		ret = base32_encode(context->data, context->length, context->buf, context->buf_size);
+	}
+	if(ret < 0) {
+		delete context->buf;
+	}
+}
+
+void after_encode_decode(uv_work_t *req, int status) {
 	Isolate* isolate = Isolate::GetCurrent();
 	HandleScope scope(isolate);
 
-	b32_context_t* context = (b32_context_t*)req->data;
-
-	fprintf(stderr, "Working with: %s",context->data);
-	size_t buf_size;
-	char *buf;
-	int ret;
-	if(context->decoding) {
-		buf_size = (context->length * 5 )/8;
-		buf = new char[buf_size];
-		ret = base32_decode(context->data, buf, buf_size);
-	}
-	else {
-		buf_size = (context->length * 8 - 1)/5+1;
-		buf = new char[buf_size];
-		ret = base32_encode(context->data, context->length, buf, buf_size);
-	}
-
-	fprintf(stderr,"Done calculating...\n");
+	b32_context_t *context = (b32_context_t*)req->data;
 
 	const unsigned argc = 2;
 	Local<Value> argv[argc];
 
+	int ret = context->ret;
+
 	if(ret >= 0) {
 		argv[0] = Null(isolate);
-		argv[1] = Buffer::Use(buf,buf_size);
+		argv[1] = Buffer::Use(context->buf,context->buf_size);
 	}
 	else {
 		argv[0] = String::NewFromUtf8(isolate,"Encode error");
 		argv[1] = Null(isolate);
 	}
-	(* context->callback)->Call(isolate->GetCurrentContext()->Global(),argc,argv);
-
-}
-
-void after_encode_decode(uv_work_t *req, int status) {
-	fprintf(stderr,"Finish working...\n");
+	TryCatch try_catch;
+	Local<Function> cb = Local<Function>::New(isolate,context->callback);
+	cb->Call(isolate->GetCurrentContext()->Global(),argc,argv);
+	if(try_catch.HasCaught()){
+		node::FatalException(try_catch);
+	}
+	context->callback.Reset();
+	delete context;
+	delete req;
 }
 
 void encode_decode(const FunctionCallbackInfo<Value>& args, bool decoding = false) {
@@ -220,17 +228,21 @@ void encode_decode(const FunctionCallbackInfo<Value>& args, bool decoding = fals
 	}
 	Local<Function> cb = Local<Function>::Cast(args[1]);
 
-	uv_work_t work_req;
-	b32_context_t context;
-	context.callback = &cb;
-	context.data = Buffer::Data(arg->ToObject());
-	context.length = Buffer::Length(arg->ToObject());
-	context.decoding = decoding;
-	work_req.data = (void *) &context;
+	uv_work_t* req = new uv_work_t;
+	b32_context_t* context = new b32_context_t;
+	context->callback.Reset(isolate,cb);
+	context->data = Buffer::Data(arg->ToObject());
+	context->length = Buffer::Length(arg->ToObject());
+	context->decoding = decoding;
+	req->data = (void*)context;
 
-	uv_queue_work(uv_default_loop(),&work_req, do_encode_decode, after_encode_decode);
+	uv_queue_work(
+		uv_default_loop(),
+		req,
+		do_encode_decode,
+		(uv_after_work_cb)after_encode_decode
+	);
 
-	return;
 }
 
 void encode(const FunctionCallbackInfo<Value>& args) {

@@ -17,19 +17,23 @@ function async_call(method, input, options, callback) {
 	if(method == 'encode') {
 		promise = new Promise(function(resolve, reject){
 			addon.encode(input,function(err,data){
+				var result,length,padidng;
 				if(err) {
 					reject(err);
+					console.error(err);
+					return;
 				}
-				resolve(data.toString());
+				if(!!options && !!options.padding) {
+					result = data.toString();
+					length = result.length;
+					padding_count = (length % 8) ? 8 - (length % 8) : 0;
+					result = result + Array(padding_count+1).join('=');
+				}
+				resolve(result);
+				console.log(result);
 			});
 		});
-		if(!!options && !!options.padding) {
-			promise = promise.then(function(result){
-				var length = result.length;
-				var padding_count = (length % 8) ? 8 - (length % 8) : 0;
-				return result + Array(padding_count+1).join('=');
-			});
-		}
+		
 	} else if (method == 'decode') {
 		var index = input.toString().indexOf('=');
 		if(index == -1) index = input.length;
@@ -45,7 +49,7 @@ function async_call(method, input, options, callback) {
 	}
 
 	if(typeof(callback) === 'function') {
-		promise = promise.then(function(data){
+		promise.then(function(data){
 			callback(null,data);
 		},function(err){
 			callback(err,null);

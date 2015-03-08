@@ -10,7 +10,7 @@ var decode_testcases = {
 	expected: encode_testcases.inputs
 }
 
-describe("b32node",function(){
+describe("b32 native",function(){
 	var b32node = require("bindings")("b32");
 
 	it("should have a method named encodeSync",function(){
@@ -85,7 +85,7 @@ describe("b32",function(){
 				result.toString().should.be.exactly('MZXW6===');
 				done();
 			})
-			.fail(function(err){
+			.catch(function(err){
 				console.error(err);
 				done(err);
 			})
