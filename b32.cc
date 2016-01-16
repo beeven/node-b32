@@ -1,10 +1,7 @@
 #include <nan.h>
 #include <node.h>
 #include <node_buffer.h>
-#include <stdio.h>
 
-using namespace v8;
-using namespace node;
 
 const char *b32table = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
@@ -49,7 +46,7 @@ int base32_decode(const char *encoded, char *result, size_t buf_size) {
 		if(ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n' || ch == '-') {
 			continue;
 		}
-		
+
 		buffer <<= 5;
 
 		if(ch == '0') {
@@ -81,7 +78,61 @@ int base32_decode(const char *encoded, char *result, size_t buf_size) {
 	return count;
 }
 
-class B32Async: public NanAsyncWorker {
+
+void encodeSync(const Nan::FunctionCallbackInfo<v8::Value>& args) {
+	if(args.Length() < 1) {
+		Nan::ThrowTypeError("Wrong number of arguments");
+		return;
+	}
+
+	v8::Local<v8::Value> arg = args[0];
+	if(!node::Buffer::HasInstance(arg)) {
+		Nan::ThrowTypeError("argument 1 must be a buffer");
+		return;
+	}
+	size_t size = node::Buffer::Length(arg->ToObject());
+	char* buf = node::Buffer::Data(arg->ToObject());
+
+	size_t buf_size = (size * 8 - 1)/5+1;
+	char *result = new char[buf_size];
+	int result_size = 0;
+	if((result_size = base32_encode(buf,size,result,buf_size))< 0) {
+		Nan::ThrowError("encode error");
+		return;
+	} else {
+		args.GetReturnValue().Set(Nan::NewBuffer(result,result_size).ToLocalChecked());
+	}
+
+}
+
+void decodeSync(const Nan::FunctionCallbackInfo<v8::Value>& args) {
+	if(args.Length() < 1) {
+		Nan::ThrowTypeError("Wrong number of arguments");
+		return;
+	}
+	v8::Local<v8::Value> arg = args[0];
+	if(!node::Buffer::HasInstance(arg)) {
+		Nan::ThrowTypeError("argument 1 must be a buffer");
+		return;
+	}
+
+	size_t size = node::Buffer::Length(arg->ToObject());
+	char* buf = node::Buffer::Data(arg->ToObject());
+
+	size_t buf_size = (size * 5 )/8;
+	char *result = new char[buf_size];
+	int result_size = 0;
+	if((result_size = base32_decode(buf,result,buf_size)) < 0) {
+		Nan::ThrowError("decode error");
+		return;
+	} else {
+		args.GetReturnValue().Set(Nan::NewBuffer(result,result_size).ToLocalChecked());
+	}
+
+}
+
+
+class B32Async: public Nan::AsyncWorker {
 public:
 	int method;
 	const char* input;
@@ -89,7 +140,7 @@ public:
 	char* result;
 	int result_size;
 
-	B32Async(NanCallback *callback, int method,const char* input, const size_t input_size):NanAsyncWorker(callback),
+	B32Async(Nan::Callback *callback, int method,const char* input, const size_t input_size):Nan::AsyncWorker(callback),
 		method(method),input(input), input_size(input_size) {
 	}
 
@@ -105,7 +156,7 @@ public:
 			if((result_size=base32_encode(input,input_size,result,buf_size)) == -1) {
 				SetErrorMessage("encode error");
 			}
-			
+
 		} else { // decode
 			size_t size = strlen(input);
 			buf_size = (size * 5 )/8;
@@ -118,125 +169,77 @@ public:
 	}
 
 	void HandleOKCallback() {
-		NanScope();
-		Handle<Value> argv[] = {
-				NanNull(),
-				NanBufferUse(result,result_size)
+		Nan::HandleScope scope;
+		v8::Local<v8::Value> argv[] = {
+				Nan::Null(),
+				Nan::NewBuffer(result,result_size).ToLocalChecked()
 			};
 		callback->Call(2,argv);
 	}
 };
 
-NAN_METHOD(encodeSync) {
-	NanScope();
+void decode(const Nan::FunctionCallbackInfo<v8::Value>& args) {
 	if(args.Length() < 1) {
-		NanThrowTypeError("Wrong number of arguments");
-		NanReturnUndefined();
+		Nan::ThrowTypeError("Wrong number of arguments");
+		return;
 	}
-
-	Local<Value> arg = args[0];
-	if(!Buffer::HasInstance(arg)) {
-		NanThrowTypeError("argument 1 must be a buffer");
-		NanReturnUndefined();
-	}
-	size_t size = Buffer::Length(arg->ToObject());
-	char* buf = Buffer::Data(arg->ToObject());
-
-	size_t buf_size = (size * 8 - 1)/5+1;
-	char *result = new char[buf_size];
-	int result_size = 0;
-	if((result_size = base32_encode(buf,size,result,buf_size))< 0) {
-		NanThrowError("encode error");
-		NanReturnUndefined();
-	} else {
-		NanReturnValue(NanBufferUse(result,result_size));
-	}
-
-}
-
-NAN_METHOD(decodeSync) {
-	NanScope();
-	if(args.Length() < 1) {
-		NanThrowTypeError("Wrong number of arguments");
-		NanReturnUndefined();
-	}
-	Local<Value> arg = args[0];
-	if(!Buffer::HasInstance(arg)) {
-		NanThrowTypeError("argument 1 must be a buffer");
-		NanReturnUndefined();
-	}
-	
-	size_t size = Buffer::Length(arg->ToObject());
-	char* buf = Buffer::Data(arg->ToObject());
-
-	size_t buf_size = (size * 5 )/8;
-	char *result = new char[buf_size];
-	int result_size = 0;
-	if((result_size = base32_decode(buf,result,buf_size)) < 0) {
-		NanThrowError("decode error");
-		NanReturnUndefined();
-	} else {
-		NanReturnValue(NanBufferUse(result,result_size));
-	}
-
-}
-
-NAN_METHOD(encode) {
-	NanScope();
-	if(args.Length() < 1) {
-		NanThrowTypeError("Wrong number of arguments");
-		NanReturnUndefined();
-	}
-	Local<Value> arg = args[0];
-	if(!Buffer::HasInstance(arg)) {
-		NanThrowTypeError("argument 1 must be a buffer");
-		NanReturnUndefined();
+	v8::Local<v8::Value> arg = args[0];
+	if(!node::Buffer::HasInstance(arg)) {
+		Nan::ThrowTypeError("argument 1 must be a buffer");
+		return;
 	}
 	if(!args[1]->IsFunction()){
-		NanThrowTypeError("argument 2 must be a function");
-		NanReturnUndefined();
+		Nan::ThrowTypeError("argument 2 must be a function");
+		return;
 	}
-	Local<Function> cb = args[1].As<Function>();
-	NanCallback *callback = new NanCallback(cb);
-	size_t size = Buffer::Length(arg->ToObject());
-	char* buf = Buffer::Data(arg->ToObject());
-
-	B32Async* job = new B32Async(callback,1,buf,size);
-	NanAsyncQueueWorker(job);
-	NanReturnUndefined();
-}
-
-NAN_METHOD(decode) {
-	NanScope();
-	if(args.Length() < 1) {
-		NanThrowTypeError("Wrong number of arguments");
-		NanReturnUndefined();
-	}
-	Local<Value> arg = args[0];
-	if(!Buffer::HasInstance(arg)) {
-		NanThrowTypeError("argument 1 must be a buffer");
-		NanReturnUndefined();
-	}
-	if(!args[1]->IsFunction()){
-		NanThrowTypeError("argument 2 must be a function");
-		NanReturnUndefined();
-	}
-	Local<Function> cb = args[1].As<Function>();
-	NanCallback *callback = new NanCallback(cb);
-	size_t size = Buffer::Length(arg->ToObject());
-	char* buf = Buffer::Data(arg->ToObject());
+	v8::Local<v8::Function> cb = args[1].As<v8::Function>();
+	Nan::Callback *callback = new Nan::Callback(cb);
+	size_t size = node::Buffer::Length(arg->ToObject());
+	char* buf = node::Buffer::Data(arg->ToObject());
 
 	B32Async* job = new B32Async(callback,2,buf,size);
-	NanAsyncQueueWorker(job);
-	NanReturnUndefined();
+	Nan::AsyncQueueWorker(job);
+	return;
 }
 
 
-void init(Handle<Object> exports, Handle<Object> module) {
-	exports->Set(NanNew("encodeSync"), NanNew<FunctionTemplate>(encodeSync)->GetFunction());
-	exports->Set(NanNew("decodeSync"),NanNew<FunctionTemplate>(decodeSync)->GetFunction());
-	exports->Set(NanNew("encode"),NanNew<FunctionTemplate>(encode)->GetFunction());
-	exports->Set(NanNew("decode"),NanNew<FunctionTemplate>(decode)->GetFunction());
+void encode(const Nan::FunctionCallbackInfo<v8::Value>& args) {
+	if(args.Length() < 1) {
+		Nan::ThrowTypeError("Wrong number of arguments");
+		return;
+	}
+	v8::Local<v8::Value> arg = args[0];
+	if(!node::Buffer::HasInstance(arg)) {
+		Nan::ThrowTypeError("argument 1 must be a buffer");
+		return;
+	}
+	if(!args[1]->IsFunction()){
+		Nan::ThrowTypeError("argument 2 must be a function");
+		return;
+	}
+	v8::Local<v8::Function> cb = args[1].As<v8::Function>();
+	Nan::Callback *callback = new Nan::Callback(cb);
+	size_t size = node::Buffer::Length(arg->ToObject());
+	char* buf = node::Buffer::Data(arg->ToObject());
+
+	B32Async* job = new B32Async(callback,1,buf,size);
+	Nan::AsyncQueueWorker(job);
+	return;
 }
 
-NODE_MODULE(b32, init);
+
+
+
+
+void Init(v8::Local<v8::Object> exports) {
+	exports->Set(Nan::New("encodeSync").ToLocalChecked(),
+		Nan::New<v8::FunctionTemplate>(encodeSync)->GetFunction());
+	exports->Set(Nan::New("decodeSync").ToLocalChecked(),
+		Nan::New<v8::FunctionTemplate>(decodeSync)->GetFunction());
+	exports->Set(Nan::New("encode").ToLocalChecked(),
+		Nan::New<v8::FunctionTemplate>(encode)->GetFunction());
+	exports->Set(Nan::New("decode").ToLocalChecked(),
+		Nan::New<v8::FunctionTemplate>(decode)->GetFunction());
+}
+
+NODE_MODULE(b32, Init);

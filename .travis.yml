@@ -1,0 +1,43 @@
+language:
+    - cpp
+
+env:
+    matrix:
+        - NODE_VERSION="0.12"
+        - NODE_VERSION="4"
+        - NODE_VERSION="5"
+
+os:
+    - linux
+    - osx
+
+notifications:
+  email:
+    - beeven@hotmail.com
+
+addons:
+    apt:
+        sources:
+            - ubuntu-toolchain-r-test
+        packages:
+            - gcc-4.9
+            - g++-4.9
+
+before_install:
+    - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then export CC="gcc-4.9" CXX="g++-4.9" ; fi
+
+install:
+    - rm -rf ~/.nvm
+    - git clone https://github.com/creationix/nvm.git ~/.nvm
+    - source ~/.nvm/nvm.sh
+    - nvm install $NODE_VERSION
+    - node --version
+    - npm install -g node-gyp
+    - node-gyp install
+    - npm install
+
+before_script:
+    - npm install -g mocha
+
+script:
+    - npm test

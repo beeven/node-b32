@@ -1,6 +1,6 @@
 {
   "name": "b32",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "description": "base32 encoder & decoder",
   "email": "beeven@hotmail.com",
   "keywords": [
@@ -12,15 +12,13 @@
   "repository": "git://github.com/beeven/node-b32.git",
   "main": "b32.js",
   "scripts": {
-    "test": "mocha test.js"
+    "test": "mocha"
   },
   "gypfile": true,
   "dependencies": {
-    "bindings": "~1.2.1",
-    "nan": "^1.7.0",
-    "q": "^1.2.0"
+    "nan": "^2.2.0"
   },
   "devDependencies": {
-    "should": "^5.1.0"
+    "should": "^8.1.1"
   }
 }
