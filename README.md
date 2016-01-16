@@ -1,6 +1,9 @@
 b32
 ========
 
+[![Build Status](https://travis-ci.org/beeven/node-b32.svg?branch=master)](https://travis-ci.org/beeven/node-b32)
+[![Dependencies](https://david-dm.org/beeven/node-b32.svg)](https://david-dm.org/beeven/node-b32)
+
 Implementation of RFC-3548 Base32 encoding/decoding for node using C (suppose to be faster than pure javascript).
 
 Features
@@ -26,7 +29,7 @@ Usage
 -----------------
 ```javascript
 var b32 = require("b32");
-// Encode a string and use callback to pick up the result 
+// Encode a string and use callback to pick up the result
 b32.encode('foo',function(err,result){
     console.log(result.toString());
 });
